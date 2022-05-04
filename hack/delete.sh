@@ -1,192 +1,128 @@
 #!/bin/bash
 
-TEMP=$(getopt -o a --long all,with-tekton,with-knative,with-openFuncAsync -- "$@")
+# Copyright 2022 The OpenFunction Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 all=false
-with_tekton=false
+with_shipwright=false
 with_knative=false
 with_openFuncAsync=false
+region_cn=false
+
+# add help information
+if [[ ${1} = "--help" ]] || [[ ${1} = "-h" ]]
+then
+  clear
+  echo "-----------------------------------------------------------------------------------------------"
+  echo "This shell script used to delete OpenFunction components from your Cluster"
+  echo "Delete version: v0.26.0"
+  echo "--all Will delete cert_manager shipwright knative openFuncAsync all components from your cluster"
+  echo "--with-cert-manager Will delete cert-manager component"
+  echo "--with-shipwright Will delete shipwright component"
+  echo "--with-knative Will delete knative component"
+  echo "--with-openFuncAsync Will delete dapr and keda components"
+  echo "-p If you can't access the github repo"
+  echo "-----------------------------------------------------------------------------------------------"
+  exit 0
+fi
+
 
 if [ $? != 0 ]; then
   echo "Terminating..." >&2
   exit 1
 fi
 
-# Note the quotes around `$TEMP': they are essential!
-eval set -- "$TEMP"
-
-while true; do
+while test $# -gt 0; do
   case "$1" in
-  --all)
-    all=true
-    shift
-    ;;
-  --with-tekton)
-    with_tekton=true
-    shift
-    ;;
-  --with-knative)
-    with_knative=true
-    shift
-    ;;
-  --with-openFuncAsync)
-    with_openFuncAsync=true
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  *)
-    echo "Internal error!"
-    exit 1
-    ;;
+    --all)
+      all=true
+      ;;
+    --with-shipwright)
+      with_shipwright=true
+      ;;
+    --with-knative)
+      with_knative=true
+      ;;
+    --with-openFuncAsync)
+      with_openFuncAsync=true
+      ;;
+    -p | --region-cn)
+      region_cn=true
+      ;;
+    *)
+      echo "Internal error!"
+      exit 1
+      ;;
   esac
+  shift
 done
 
-if [ "$all" = "true" ]; then
-  with_tekton=true
+if [ "${all}" = "true" ]; then
+  with_shipwright=true
   with_knative=true
   with_openFuncAsync=true
+  with_ingress=true
 fi
 
-if [ "$with_tekton" = "true" ]; then
-  kubectl delete ns tekton-pipelines
-  kubectl delete podsecuritypolicies tekton-pipelines
-  kubectl delete ClusterRole tekton-pipelines-controller-cluster-access
-  kubectl delete ClusterRole tekton-pipelines-controller-tenant-access
-  kubectl delete ClusterRole tekton-pipelines-webhook-cluster-access
-  kubectl delete ClusterRoleBinding tekton-pipelines-controller-cluster-access
-  kubectl delete ClusterRoleBinding tekton-pipelines-controller-tenant-access
-  kubectl delete ClusterRoleBinding tekton-pipelines-webhook-cluster-access
-  kubectl delete crd clustertasks.tekton.dev
-  kubectl delete crd conditions.tekton.dev
-  kubectl delete crd pipelines.tekton.dev
-  kubectl delete crd pipelineruns.tekton.dev
-  kubectl delete crd pipelineresources.tekton.dev
-  kubectl delete crd runs.tekton.dev
-  kubectl delete crd tasks.tekton.dev
-  kubectl delete crd taskruns.tekton.dev
-
-  kubectl delete validatingwebhookconfiguration validation.webhook.pipeline.tekton.dev
-  kubectl delete mutatingwebhookconfiguration webhook.pipeline.tekton.dev
-  kubectl delete ValidatingWebhookConfiguration config.webhook.pipeline.tekton.dev
-  kubectl delete ClusterRole tekton-aggregate-edit
-  kubectl delete ClusterRole tekton-aggregate-view
-
-  kubectl delete PodSecurityPolicy tekton-triggers
-  kubectl delete ClusterRole tekton-triggers-admin
-  kubectl delete ClusterRole tekton-triggers-core-interceptors
-  kubectl delete ClusterRoleBinding tekton-triggers-controller-admin
-  kubectl delete ClusterRoleBinding tekton-triggers-webhook-admin
-  kubectl delete ClusterRoleBinding tekton-triggers-core-interceptors
-
-  kubectl delete crd clusterinterceptors.triggers.tekton.dev
-  kubectl delete crd clustertriggerbindings.triggers.tekton.dev
-  kubectl delete crd eventlisteners.triggers.tekton.dev
-  kubectl delete crd triggers.triggers.tekton.dev
-  kubectl delete crd triggerbindings.triggers.tekton.dev
-  kubectl delete crd triggertemplates.triggers.tekton.dev
-  kubectl delete ValidatingWebhookConfiguration validation.webhook.triggers.tekton.dev
-  kubectl delete MutatingWebhookConfiguration webhook.triggers.tekton.dev
-  kubectl delete ValidatingWebhookConfiguration config.webhook.triggers.tekton.dev
-  kubectl delete ClusterRole tekton-triggers-aggregate-edit
-  kubectl delete ClusterRole tekton-triggers-aggregate-view
-
-  kubectl delete crd extensions.dashboard.tekton.dev
-  kubectl delete ClusterRole tekton-dashboard-backend
-  kubectl delete ClusterRole tekton-dashboard-dashboard
-  kubectl delete ClusterRole tekton-dashboard-extensions
-  kubectl delete ClusterRole tekton-dashboard-pipelines
-  kubectl delete ClusterRole tekton-dashboard-tenant
-  kubectl delete ClusterRole tekton-dashboard-triggers
-  kubectl delete ClusterRoleBinding tekton-dashboard-backend
-  kubectl delete ClusterRoleBinding tekton-dashboard-tenant
-  kubectl delete ClusterRoleBinding tekton-dashboard-extensions
+if [ "${with_shipwright}" = "true" ]; then
+  if [ "${region_cn}" = "false" ]; then
+    kubectl delete --filename https://github.com/tektoncd/pipeline/releases/download/v0.28.1/release.yaml
+    kubectl delete --filename https://github.com/shipwright-io/build/releases/download/v0.6.0/release.yaml
+  else
+    kubectl delete --filename https://openfunction.sh1a.qingstor.com/tekton/pipeline/v0.28.1/release.yaml
+    kubectl delete --filename https://openfunction.sh1a.qingstor.com/shipwright/v0.6.0/release.yaml
+  fi
 fi
 
-if [ "$with_knative" = "true" ]; then
-  kubectl delete crd images.caching.internal.knative.dev
-  kubectl delete crd certificates.networking.internal.knative.dev
-  kubectl delete crd configurations.serving.knative.dev
-  kubectl delete crd ingresses.networking.internal.knative.dev
-  kubectl delete crd metrics.autoscaling.internal.knative.dev
-  kubectl delete crd podautoscalers.autoscaling.internal.knative.dev
-  kubectl delete crd revisions.serving.knative.dev
-  kubectl delete crd routes.serving.knative.dev
-  kubectl delete crd serverlessservices.networking.internal.knative.dev
-  kubectl delete crd services.serving.knative.dev
-
-  kubectl delete Namespace knative-serving
-  kubectl delete ClusterRole knative-serving-addressable-resolver
-  kubectl delete ClusterRole knative-serving-namespaced-admin
-  kubectl delete ClusterRole knative-serving-namespaced-edit
-  kubectl delete ClusterRole knative-serving-namespaced-view
-  kubectl delete ClusterRole knative-serving-core
-  kubectl delete ClusterRole knative-serving-podspecable-binding
-  kubectl delete ClusterRole knative-serving-admin
-  kubectl delete ClusterRoleBinding knative-serving-controller-admin
-  kubectl delete ValidatingWebhookConfiguration config.webhook.serving.knative.dev
-  kubectl delete MutatingWebhookConfiguration webhook.serving.knative.dev
-  kubectl delete ValidatingWebhookConfiguration validation.webhook.serving.knative.dev
-
-  kubectl delete Namespace kourier-system
-  kubectl delete clusterrole.rbac.authorization.k8s.io 3scale-kourier
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io 3scale-kourier
-
-  kubectl delete crd apiserversources.sources.knative.dev
-  kubectl delete crd brokers.eventing.knative.dev
-  kubectl delete crd channels.messaging.knative.dev
-  kubectl delete crd containersources.sources.knative.dev
-  kubectl delete crd eventtypes.eventing.knative.dev
-  kubectl delete crd parallels.flows.knative.dev
-  kubectl delete crd pingsources.sources.knative.dev
-  kubectl delete crd sequences.flows.knative.dev
-  kubectl delete crd sinkbindings.sources.knative.dev
-  kubectl delete crd subscriptions.messaging.knative.dev
-  kubectl delete crd triggers.eventing.knative.dev
-
-  kubectl delete ns knative-eventing
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-controller
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-controller-resolver
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-controller-source-observer
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-controller-sources-controller
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-controller-manipulator
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io knative-eventing-pingsource-mt-adapter
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-webhook
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-webhook-resolver
-  kubectl delete clusterrolebinding.rbac.authorization.k8s.io eventing-webhook-podspecable-binding
-  kubectl delete clusterrole.rbac.authorization.k8s.io service-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io serving-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io channel-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io broker-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io messaging-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io flows-addressable-resolver
-  kubectl delete clusterrole.rbac.authorization.k8s.io eventing-broker-filter
-  kubectl delete clusterrole.rbac.authorization.k8s.io eventing-broker-ingress
-  kubectl delete clusterrole.rbac.authorization.k8s.io eventing-config-reader
-  kubectl delete clusterrole.rbac.authorization.k8s.io channelable-manipulator
-  kubectl delete clusterrole.rbac.authorization.k8s.io meta-channelable-manipulator
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-namespaced-admin
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-messaging-namespaced-admin
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-flows-namespaced-admin
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-sources-namespaced-admin
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-bindings-namespaced-admin
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-namespaced-edit
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-namespaced-view
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-controller
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-pingsource-mt-adapter
-  kubectl delete clusterrole.rbac.authorization.k8s.io builtin-podspecable-binding
-  kubectl delete clusterrole.rbac.authorization.k8s.io eventing-sources-source-observer
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-sources-controller
-  kubectl delete clusterrole.rbac.authorization.k8s.io knative-eventing-webhook
-  kubectl delete validatingwebhookconfiguration.admissionregistration.k8s.io config.webhook.eventing.knative.dev
-  kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io webhook.eventing.knative.dev
-  kubectl delete validatingwebhookconfiguration.admissionregistration.k8s.io validation.webhook.eventing.knative.dev
-  kubectl delete mutatingwebhookconfiguration.admissionregistration.k8s.io sinkbindings.webhook.sources.knative.dev
+if [ "${with_knative}" = "true" ]; then
+  if [ "${region_cn}" = "false" ]; then
+    kubectl delete -f https://github.com/knative/serving/releases/download/v0.26.0/serving-crds.yaml
+    kubectl delete -f https://github.com/knative/serving/releases/download/v0.26.0/serving-core.yaml
+    kubectl delete -f https://github.com/knative/net-kourier/releases/download/v0.26.0/kourier.yaml
+    kubectl delete -f https://github.com/knative/serving/releases/download/v0.26.0/serving-default-domain.yaml
+  else
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/knative/serving/v0.26.0/serving-crds.yaml
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/knative/serving/v0.26.0/serving-core.yaml
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/knative/net-kourier/v0.26.0/kourier.yaml
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/knative/serving/v0.26.0/serving-default-domain.yaml
+  fi
 fi
 
-if [ "$with_openFuncAsync" = "true" ]; then
-  dapr uninstall -k
-  kubectl delete --ignore-not-found=true -f https://github.com/kedacore/keda/releases/download/v2.2.0/keda-2.2.0.yaml
+if [ "${with_openFuncAsync}" = "true" ]; then
+  if [ "${region_cn}" = "false" ]; then
+    # Installs the latest Dapr CLI.
+    wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s 1.4.0
+    # Init dapr
+    dapr uninstall -k --all
+    kubectl delete ns dapr-system
+    # Installs the latest release version
+    kubectl delete -f https://github.com/kedacore/keda/releases/download/v2.4.0/keda-2.4.0.yaml
+  else
+    # Installs the latest Dapr CLI.
+    wget -q https://openfunction.sh1a.qingstor.com/dapr/install.sh -O - | /bin/bash -s 1.4.0
+    # Init dapr
+    dapr uninstall -k --all
+    kubectl delete ns dapr-system
+    # Installs the latest release version
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/v2.4.0/keda-2.4.0.yaml
+  fi
+fi
+
+if [ "${with_ingress}" = "true" ]; then
+  if [ "${region_cn}" = "false" ]; then
+    kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+  else
+    kubectl delete -f https://openfunction.sh1a.qingstor.com/ingress-nginx/deploy/static/provider/cloud/deploy.yaml
+  fi
 fi

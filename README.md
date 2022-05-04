@@ -1,143 +1,221 @@
-# ![OpenFunction](docs/images/logo.png)
+<p align="center">
+<a href="https://openfunction.dev/"><img src="docs/images/openfunction-logo-gif.gif" alt="banner" width="500px"></a>
+</p>
 
-## Overview
+<p align="center">
+<b>Cloud native FaaS platform for running Serverless workloads with ease</b>
+</p>
 
-```OpenFunction``` is a cloud-native open source FaaS (Function as a Service) platform aiming to enable users to focus on their business logic without worrying about the underlying runtime environment and infrastructure. Users only need to submit business-related source code in the form of functions.
+<p align=center>
+<a href="https://goreportcard.com/report/github.com/openfunction/openfunction"><img src="https://goreportcard.com/badge/github.com/openfunction/openfunction" alt="A+"></a>
+<a href="https://hub.docker.com/r/openfunction/openfunction"><img src="https://img.shields.io/docker/pulls/openfunction/openfunction"></a>
+<a href="https://github.com/OpenFunction/OpenFunction/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22"><img src="https://img.shields.io/github/issues/openfunction/openfunction?label=good%20first%20issues" alt="good first"></a>
+<a href="https://twitter.com/intent/follow?screen_name=KubeSphere"><img src="https://img.shields.io/twitter/follow/KubeSphere?style=social" alt="follow on Twitter"></a>
+<a href="https://join.slack.com/t/kubesphere/shared_invite/enQtNTE3MDIxNzUxNzQ0LTZkNTdkYWNiYTVkMTM5ZThhODY1MjAyZmVlYWEwZmQ3ODQ1NmM1MGVkNWEzZTRhNzk0MzM5MmY4NDc3ZWVhMjE"><img src="https://img.shields.io/badge/Slack-600%2B-blueviolet?logo=slack&amp;logoColor=white"></a>
+<a href="https://www.youtube.com/channel/UCyTdUQUYjf7XLjxECx63Hpw"><img src="https://img.shields.io/youtube/channel/subscribers/UCyTdUQUYjf7XLjxECx63Hpw?style=social"></a>
+</p>
 
-```OpenFunction``` features but not limited to the following:
+## 👀 Overview
 
-- Convert business-related function source code to runnable application source code.
-- Generate a deployable container image from the converted application source code.
-- Deploy the generated container image to the underlying runtime environment such as K8s, and automatically scale up and down according to business traffic, and scale to 0 when there is no traffic.
-- Provide event management functions for trigger functions.
-- Provide additional functions to manage function versions, ingress management etc.
+[OpenFunction](https://openfunction.dev/) is a cloud-native open source FaaS (Function as a Service) platform aiming to let you focus on your business logic without having to maintain the underlying runtime environment and infrastructure. You only need to submit business-related source code in the form of functions.
 
-![](docs/images/OpenFunction-architecture.png)
+<div align=center><img src=docs/images/function-lifecycle.svg></div>
 
-## CustomResourceDefinitions
+OpenFunction features include:
 
-The core function of OpenFunction is to enable users to develop, run, and manage business applications as execution units of code functions. OpenFunction implements the following [custom resource definitions (CRDs)](https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-custom-resource-definitions/):  
+- Converting business-related function source code to application source code.
+- Generating ready-to-run container images from the converted application source code.
+- Deploying generated container images to any underlying runtime environments such as Kubernetes, and automatically scaling up and down from 0 to N according to business traffic.
+- Providing event management functions for trigger functions.
+- Providing additional functions for function version management, ingress management, etc.
 
-- **Function**, defines a function.
-- **Builder**, defines a function builder.
-- **Serving**, defines a function workload.
+## ☸ Architecture
 
-### Function
+![OpenFunction Architecture](docs/images/openfunction-0.5-architecture.svg)
 
-The goal of Function is to control the lifecycle management from user code to the final application that can respond to events through a single profile.
+OpenFunction manages resources in the form of Custom Resource Definitions (CRD) throughout the lifecycle of a function. To learn more about it, visit [Components](docs/concepts/Components.md) or [Concepts](https://openfunction.dev/docs/concepts/).
 
-Function will manage and coordinate Builder and Serving resources to handle the details of the process.
+<div align=center><img src=docs/images/OpenFunction-events-architecture.svg></div>
 
-### Builder
+OpenFunction Events is OpenFunction's events framework, you can refer to [OpenFunction Events](https://github.com/OpenFunction/OpenFunction/blob/main/docs/concepts/OpenFunction-events-framework.md) for more infomation.
+## ✔️ Compatibility
 
-The goal of Builder is to compile the user's function source code into an application image that can be run in a cloud-native environment.
+### Kubernetes compatibility matrix
 
-It will fetch the code from the code repository, build the application image locally and publish it to the container image repository.
+The following Kubernetes versions are supported as we tested against these versions in their respective branches. Besides, OpenFunction might also work well with other Kubernetes versions!
 
-Currently, OpenFunction Builder uses [Tekton and Cloud Native Buildpacks](#tekton-and-cloud-native-buildpacks) to build container images.
+| OpenFunction                                                 | Kubernetes 1.17 | Kubernetes 1.18 | Kubernetes 1.19 | Kubernetes 1.20+ |
+| ------------------------------------------------------------ | --------------- | --------------- | --------------- | ---------------- |
+| [`release-0.4`](https://github.com/OpenFunction/OpenFunction/tree/v0.4.0) | &radic;         | &radic;         | &radic;         | &radic;          |
+| [`release-0.5`](https://github.com/OpenFunction/OpenFunction/tree/v0.5.0) | &radic; *         | &radic; *         | &radic;         | &radic;          |
+| [`release-0.6`](https://github.com/OpenFunction/OpenFunction/tree/v0.6.0) | &radic; *         | &radic; *         | &radic;         | &radic;          |
+| [`HEAD`](https://github.com/OpenFunction/OpenFunction/tree/main) | &radic; *         | &radic; *         | &radic;         | &radic;          |
 
-#### Tekton and Cloud Native Buildpacks
+\****Note***: OpenFunction has added the [function ingress](docs/concepts/Components.md#domain) feature in *release-0.5*, which means that:
 
-Tekton is a CI/CD system that provides task pipelining capabilities. 
+- You have to install OpenFunction in Kuberenetes ***v1.19*** or later if you enable this feature.
+- You can still use OpenFunction in Kubernetes ***v1.17—v1.20+*** without this feature enabled.
 
-Cloud Native Buildpacks is an OCI standard image building framework that transform your application source code into images that can run on any cloud.
+## 🚀 QuickStart
 
-OpenFunction Builder controls the build process of application images by Tekton, including fetching code, building and publishing images via Cloud Native Buildpacks.
+### Install OpenFunction
 
-### Serving
+Visit [ofn releases page](https://github.com/OpenFunction/cli/releases) to download the latest version of `ofn`, the CLI of OpenFunction, to install OpenFunction and its dependencies on your Kubernetes cluster.
 
-The goal of Serving is to serving user functions and implementing event-driven functions response.
+Besides, you can perform the following steps to install the latest version of OpenFunction.
 
-Currently, OpenFunction supports two serving runtimes, [Knative](#knative) and [OpenFuncAsync](#openfuncasync). At least one of these runtimes needs to be installed.
+1. Run the following command to download `ofn`.
 
-#### Knative
+   ```
+   wget -c  https://github.com/OpenFunction/cli/releases/latest/download/ofn_linux_amd64.tar.gz -O - | tar -xz
+   ```
 
-Knative Serving builds on Kubernetes to support deploying and serving serverless applications and functions. Knative Serving is easy to get started with and scales to support advanced scenarios.
+2. Run the following commands to make `ofn` executable and move it to `/usr/local/bin/`.
 
-#### OpenFuncAsync
+   ```
+   chmod +x ofn && mv ofn /usr/local/bin/
+   ```
 
-OpenFuncAsync is an event-driven Serving runtime. It is implemented based on KEDA + Dapr.
+3. Run the following command to install OpenFunction.
 
-You can refer to [Prerequisites](#prerequisites) and use `--with-openFuncAsync` to install OpenFuncAsync runtime.
+   ```
+   ofn install --all
+   ```
 
-The OpenFuncAsync runtime can be triggered by a variety of event types, such as MQ, cronjob, DB events, etc. In Kubernetes cluster, OpenFuncAsync will be triggered in the form of deployments or jobs.
+You can refer to [ofn install document](https://github.com/OpenFunction/cli/blob/main/docs/install.md) for more information about the `ofn install` command.
 
-## QuickStart
+### Run a function sample
 
-### Prerequisites
+After you install OpenFunction, refer to [OpenFunction samples](https://github.com/OpenFunction/samples) to learn more about function samples.
 
-The current version of OpenFunction requires that you have a Kubernetes cluster with version ``>=1.18.6``.
+Here is an example of a synchronous function:
 
-In addition, you need to deploy several dependencies for the OpenFunction ```Builder``` and ```Serving```.
+> This function writes "Hello, World!" to the HTTP response. Refer to [here](https://github.com/OpenFunction/samples/tree/main/functions/Knative) to find more samples of synchronous functions.
 
-You can refer to the [Installation Guide](docs/installation/README.md) to setup OpenFunction ```Builder``` and ```Serving```, 
-or use the following command to easily setup OpenFunction ```Builder``` and ```Serving```.
+```go
+package hello
 
-```shell
-sh hack/deploy.sh --all
+import (
+	"fmt"
+	"net/http"
+)
+
+func HelloWorld(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello, %s!\n", r.URL.Path[1:])
+}
 ```
 
-This command will install dependencies of all supported ```Builder``` and ```Serving``` to your cluster.
+[Function ingress](docs/concepts/Components.md#domain) defines a unified entry point for a synchronous function. You can use it as in below format to access a synchronous function without [configuring LB for Knative](https://github.com/OpenFunction/samples/tree/main/functions/Knative/hello-world-go).
 
-You can also customize the installation with the following parameters:
-
-|Parameter|Comment|
-|---|---|
-| --all                              | Install all supported ```Builder``` and ```Serving``` |
-| --with-tekton                      | Install Tekton builder |
-| --with-knative                     | Install Knative serving runtime |
-| --with-openFuncAsync               | Install OpenFuncAsync serving runtime |
-| --poor-network                     | Use this when you having poor network connectivity to GitHub/Googleapis |
-| --tekton-dashboard-nodeport <port> | Expose the Tekton dashboard service with nodeport |
-
-### Install
-
-You can install the OpenFunction platform by the following command:
-
-- Install the latest stable version
-
-```shell
-kubectl apply -f https://github.com/OpenFunction/OpenFunction/releases/download/v0.2.0/bundle.yaml
+```bash
+curl http://<domain-name>.<domain-namespace>/<function-namespace>/<function-name>
 ```
 
-- Install the development version
+Here is an example of asynchronous function:
 
-```shell
-kubectl apply -f https://raw.githubusercontent.com/OpenFunction/OpenFunction/main/config/bundle.yaml
+> This function receives a greeting message and then send it to "another-target". Refer to [here](https://github.com/OpenFunction/samples/tree/main/functions/Async) to find more samples of asynchronous functions.
+
+```go
+package bindings
+
+import (
+	"encoding/json"
+	"log"
+
+	ofctx "github.com/OpenFunction/functions-framework-go/context"
+)
+
+func BindingsOutput(ctx ofctx.Context, in []byte) (ofctx.Out, error) {
+	var greeting []byte
+	if in != nil {
+		greeting = in
+	} else {
+		greeting, _ = json.Marshal(map[string]string{"message": "Hello"})
+	}
+
+	_, err := ctx.Send("another-target", greeting)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return ctx.ReturnOnInternalError(), err
+	}
+	return ctx.ReturnOnSuccess(), nil
+}
 ```
 
-> Note: When using non-default namespaces, make sure that the ClusterRoleBinding in the namespace is adapted.
+One more example with tracing capability: 
 
-### Sample: Run a function.
+> SkyWalking provides solutions for observing and monitoring distributed systems, in many different scenarios.
+>
+> We have introduced SkyWalking (go2sky) for OpenFunction as a distributed tracing solution for Go language functions. 
 
-If you have already installed the OpenFunction platform, refer to [OpenFunction samples](https://github.com/OpenFunction/samples) to run a sample function.
+You can find the method to enable SkyWalking tracing for Go functions in [tracing sample](https://github.com/OpenFunction/samples/blob/main/functions/tracing/README.md).
 
-### Uninstall 
+![](docs/images/tracing-topology.gif)
 
-You can uninstall the components of OpenFunction by executing the following command:
+You can also run the following command to make a quick demo:
 
 ```shell
-kubectl delete -f config/bundle.yaml
+ofn demo
 ```
 
-## Development
+>By default, a demo environment will be deleted when a demo finishes.
+>You can keep the demo kind cluster for further exploration by running `ofn demo --auto-prune=false`.
+>The demo kind cluster can be deleted by running `kind delete cluster --name openfunction`.
 
-You can get help on developing this project by visiting [Development Guide](docs/development/README.md).
+For more information about how to use the `ofn demo` command, refer to [ofn demo document](https://github.com/OpenFunction/cli/blob/main/docs/demo.md).
 
-## Roadmap
+### Uninstall OpenFunction
 
-[Here](docs/roadmap.md) you can find OpenFunction's roadmap.
+Run the following command to uninstall OpenFunction and its dependencies.
 
-## Community
+```shell
+ofn uninstall --all
+```
 
-### Community Call
+For more information about how to use the `ofn uninstall` command, refer to [ofn uninstall document](https://github.com/OpenFunction/cli/blob/main/docs/uninstall.md).
 
-Meeting Info: [Zoom](https://us02web.zoom.us/j/87437196365?pwd=UndDL2puMXlqcSt5U3JaYUdRNk85Zz09) 
+### FAQ
 
-Meeting Time: Wednesday at 16:30~17:30 Beijing Time (biweekly, starting from June 23rd, 2021) [Meeting Calendar](https://kubesphere.io/contribution/)
+When you encounter any problems when using OpenFunction, you can refer to the [FAQ](docs/faq/README.md) for help.
 
-[Meeting notes](https://docs.google.com/document/d/1bh5-kVPegjNlIjjq_e37mS3ZhyXWhmmUaysFgeI9_-o/edit?usp=sharing)
+## 💻 Development
 
+See the [Development Guide](docs/development/README.md) to get started with developing this project.
+
+## 🛣️ Roadmap
+
+Learn more about OpenFunction [roadmap](docs/roadmap.md).
+
+## 🏘️ Community
+
+### Community Call and Events
+
+Meeting time：15:00-16:00(GMT+08:00), Thursday every two weeks starting from March 17th, 2022
+
+Meeting room: [Tencent Meeting](https://meeting.tencent.com/dm/HMec1CjT8F2i)
+
+Tencent Meeting Number: 443-6181-3052
+
+Check out the [meeting calendar](https://kubesphere.io/contribution/) and [meeting notes](https://docs.google.com/document/d/1bh5-kVPegjNlIjjq_e37mS3ZhyXWhmmUaysFgeI9_-o/edit?usp=sharing).
+
+OpenFunction team has presented OpenFunction project in some community events including [CNCF TAG-runtime meeting](https://youtu.be/qDH_LbagrVA?t=821), [Dapr community meeting](https://youtu.be/S9e3ol7JCDA?t=183), and [OpenFunction community call](https://space.bilibili.com/438908638/channel/seriesdetail?sid=495452). You can watch the recording videos and ask us anything.
 ### Contact Us
 
-- Slack [#sig-serverless](https://kubesphere.slack.com/archives/C021XAR3CG3)
+OpenFunction is sponsored and open-sourced by the [KubeSphere](http://kubesphere.io/) Team and maintained by the OpenFunction community.
+
+- Slack: [#sig-serverless](https://kubesphere.slack.com/archives/C021XAR3CG3)
+- Wechat: join the OpenFunction user group by following the KubeSphere WeChat subscription
+
+## Landscape
+
+<p align="center">
+<br/><br/>
+<img src="https://landscape.cncf.io/images/left-logo.svg" width="150"/>&nbsp;&nbsp;<img src="https://landscape.cncf.io/images/right-logo.svg" width="200"/>&nbsp;&nbsp;
+<br/><br/>
+OpenFunction enriches the <a href="https://landscape.cncf.io/serverless?license=apache-license-2-0">CNCF Cloud Native Landscape.
+</a>
+</p>
+
+## 📊 Status
+
+![Alt](https://repobeats.axiom.co/api/embed/48814fec53572bf75ac4de9d4f447d2c978b26ee.svg "Repobeats analytics image")

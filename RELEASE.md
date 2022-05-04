@@ -4,10 +4,16 @@ This page describes the release process and the currently planned schedule for u
 
 ## Release schedule
 
-| release series | date  (year-month-day) | release shepherd                            |
-|----------------|--------------------------------------------|---------------------------------------------|
-| v0.1.0           | 2021-05-17                                 | Benjamin Huo (GitHub: @benjaminhuo) |
-| v0.2.0           | 2020-06-30                                 | Benjamin Huo (GitHub: @benjaminhuo) |
+| release series   | date  (year-month-day)                     | release shepherd          |
+|------------------|--------------------------------------------|---------------------------|
+| v0.1.0           | 2021-05-17                                 | Benjamin Huo @benjaminhuo |
+| v0.2.0           | 2021-06-30                                 | Benjamin Huo @benjaminhuo |
+| v0.3.0           | 2021-08-19                                 | Laminar @tpiperatgod      |
+| v0.3.1           | 2021-08-27                                 | Wanjun Lei @wanjunlei     |
+| v0.4.0           | 2021-10-19                                 | Wanjun Lei @wanjunlei     |
+| v0.5.0           | 2021-12-31                                 | Benjamin Huo @benjaminhuo |
+| v0.6.0-rc        | 2022-03-08                                 | Benjamin Huo @benjaminhuo |
+| v0.6.0           | 2022-03-21                                 | Benjamin Huo @benjaminhuo |
 
 # How to cut a new release
 
@@ -27,35 +33,32 @@ Maintaining the release branches for older minor releases happens on a best effo
 
 ## Prepare your release
 
-For a new major or minor release, work from the `main` branch. For a patch release, work in the branch of the minor release you want to patch (e.g. `release-0.1` if you're releasing `v0.1.1`).
+For a major or minor release, start working in the `main` branch. For a patch release, start working in the minor release branch you want to patch (e.g. `release-0.1` if you're releasing `v0.1.1`).
 
-Change the `Install the latest stable version` section in README.md to the new stable version:
-```bash
-kubectl apply -f https://github.com/OpenFunction/OpenFunction/releases/download/v<major>.<minor>.<patch>/bundle.yaml
-```
-
-Add an entry for the new version to the `CHANGELOG.md` file. Entries in the `CHANGELOG.md` are meant to be in this order:
+Add an entry for the new version to the `CHANGELOG.md` file. Entries in the `CHANGELOG.md` should be in this order:
 
 * `[CHANGE]`
 * `[FEATURE]`
 * `[ENHANCEMENT]`
 * `[BUGFIX]`
 
-Create a PR for the changes to be reviewed.
+Create a PR for the change log.
 
 ## Publish the new release
 
 For new minor and major releases, create the `release-<major>.<minor>` branch starting at the PR merge commit.
 From now on, all work happens on the `release-<major>.<minor>` branch.
 
-Bump the version in the `VERSION` file in the root of the repository.
-Build and push the container image:
+Bump the version in the `VERSION` file.
+
+Regenerate bundle.yaml based on latest code by `make manifests` and then commit the changed bundle.yaml to the `release-<major>.<minor>` branch:
 
 ```bash
-make build
-make push
+make manifests
+git add ./
+git commit -s -m "regenerate bundle.yaml"
+git push
 ```
-> We'll add a CI pipeline in the future which will automatically push the container images to [docker hub](https://hub.docker.com/repository/docker/openfunction).
 
 Tag the new release with a tag named `v<major>.<minor>.<patch>`, e.g. `v2.1.3`. Note the `v` prefix. You can do the tagging on the commandline:
 
@@ -66,6 +69,9 @@ git push origin "${tag}"
 ```
 Commit all the changes.
 
-Go to https://github.com/OpenFunction/OpenFunction/releases/new, associate the new release with the before pushed tag, paste in changes made to `CHANGELOG.md`, add file `config/bundle.yaml` and then click "Publish release".
+The corresponding container image will be built and pushed to [docker hub](https://hub.docker.com/repository/docker/openfunction) automatically by CI once the release tag is added.
+
+Go to https://github.com/OpenFunction/OpenFunction/releases/new, associate the new release with the before pushed tag, paste in changes made to `CHANGELOG.md`, add file `config/bundle.yaml`, file `config/strategy/build-strategy.yaml`, file `config/domain/default-domain.yaml` and then click "Publish release".
 
 For patch releases, submit a pull request to merge back the release branch into the `main` branch.
+

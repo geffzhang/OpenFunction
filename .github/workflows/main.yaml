@@ -1,0 +1,201 @@
+#
+# Copyright 2022 The OpenFunction Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+name: Main CI WorkFlow
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'release-*'
+    paths:
+      - '.github/workflows/**'
+      - 'apis/**'
+      - 'config/bundle.yaml'
+      - 'config/samples/function-bindings-sample-serving-only.yaml'
+      - 'config/samples/function-pubsub-sample-serving-only.yaml'
+      - 'config/samples/function-knative-with-dapr-serving-only.yaml'
+      - 'config/samples/function-sample-serving-only.yaml'
+      - 'config/samples/function-with-plugins-serving-only.yaml'
+      - 'controllers/**'
+      - 'hack/generate-cert.sh'
+      - 'hack/delete.sh'
+      - 'hack/deploy.sh'
+      - 'pkg/**'
+      - 'Dockerfile'
+      - 'main.go'
+      - 'Makefile'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: Verify and Unit Test
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Check License Header
+        uses: apache/skywalking-eyes@main
+
+      - name: Install kubebuilder-3.1.0
+        run: |
+          curl -L -o kubebuilder "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v3.1.0/kubebuilder_linux_amd64"
+          chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
+      - name: Run basic test
+        run: make test
+
+      - name: Run verify crds test
+        run:  make verify
+
+  e2e_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: E2E Tests
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16.x
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Create kind cluster
+        uses: container-tools/kind-action@v1
+
+      - name: Install dependent components
+        run: |
+          chmod a+x ./hack/deploy.sh
+          ./hack/deploy.sh --all
+          # Remove the resources request to avoid Insufficient CPU error
+          kubectl patch deployments.apps -n tekton-pipelines tekton-pipelines-webhook -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhook","resources":null}]}}}}'
+          kubectl patch deployments.apps -n knative-serving activator -p '{"spec":{"template":{"spec":{"containers":[{"name":"activator","resources":null}]}}}}'
+          kubectl patch deployments.apps -n knative-serving controller -p '{"spec":{"template":{"spec":{"containers":[{"name":"controller","resources":null}]}}}}'
+          kubectl patch deployments.apps -n knative-serving autoscaler -p '{"spec":{"template":{"spec":{"containers":[{"name":"autoscaler","resources":null}]}}}}'
+          kubectl patch deployments.apps -n knative-serving domainmapping-webhook -p '{"spec":{"template":{"spec":{"containers":[{"name":"domainmapping-webhook","resources":null}]}}}}'
+          kubectl patch deployments.apps -n knative-serving webhook -p '{"spec":{"template":{"spec":{"containers":[{"name":"webhook","resources":null}]}}}}'
+          kubectl patch deployments.apps -n keda keda-operator -p '{"spec":{"template":{"spec":{"containers":[{"name":"keda-operator","resources":null}]}}}}'
+          kubectl patch deployments.apps -n keda keda-metrics-apiserver -p '{"spec":{"template":{"spec":{"containers":[{"name":"keda-metrics-apiserver","resources":null}]}}}}'
+          # Install kafka
+          helm repo add strimzi https://strimzi.io/charts/
+          helm install kafka-operator -n default strimzi/strimzi-kafka-operator
+          kubectl apply -f config/samples/function-kafka-quick.yaml
+
+      - name: Build and Push image
+        run: |
+          docker build . -t kind-registry:5000/openfunction/openfunction:latest -f Dockerfile --build-arg GOPROXY="https://proxy.golang.org"
+          docker push kind-registry:5000/openfunction/openfunction:latest
+
+      - name: Install OpenFunction
+        run: |
+          kubectl apply -f config/bundle.yaml
+          kubectl apply -f config/domain/default-domain.yaml
+          kubectl apply -f config/strategy/build-strategy.yaml
+          kubectl patch deployments.apps -n openfunction openfunction-controller-manager -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"openfunction\",\"image\":\"kind-registry:5000/openfunction/openfunction:latest\",\"resources\":null}]}}}}"
+          kubectl rollout status -n openfunction deployment openfunction-controller-manager --timeout=1m
+          sleep 10
+
+#      - name: Setup tmate session
+#        uses: mxschmitt/action-tmate@v1
+
+      - name: Wait for kafka to be ready
+        run: |
+          for i in {1..600}
+          do
+            status=`kubectl get kafkas.kafka.strimzi.io kafka-server -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'`
+            if [ $status == "True" ]; then
+              echo "The Kafka is ready!"
+              break
+            else
+              sleep 1
+              continue
+            fi
+          done
+        shell: bash
+
+      - name: Knative function e2e test
+        timeout-minutes: 10
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/.github/workflows/e2e-test.sh"
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh knative
+
+      - name: Knative function with Dapr e2e test
+        timeout-minutes: 10
+        run: |
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh knative_dapr
+
+      - name: Async pubsub function e2e test
+        timeout-minutes: 10
+        run: |
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh async_pubsub
+
+      - name: Async bindings function e2e test
+        timeout-minutes: 10
+        run: |
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh async_bindings
+
+      - name: Function with plugins e2e test
+        timeout-minutes: 10
+        run: |
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh plugin
+
+      - name: Function with events e2e test
+        timeout-minutes: 10
+        run: |
+          helm repo add nats https://nats-io.github.io/k8s/helm/charts/
+          helm install nats nats/nats
+          helm install stan nats/stan --set stan.nats.url=nats://nats:4222
+          # deploy the eventbus backend nats streaming
+          while /bin/true; do
+            nats_status=`kubectl get pod nats-0 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'`
+            stan_status=`kubectl get pod stan-0 -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'`
+            if [[ "$nats_status" == "True" ]] && [[ "$stan_status" == "True" ]]; then
+              echo "Nats streaming is ready!"
+              break
+            else
+              sleep 1
+              continue
+            fi
+          done
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/e2e-test.sh events
+
+      - name: Output debug info
+        if: ${{ failure() }}
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/.github/workflows/output.sh"
+          bash "${GITHUB_WORKSPACE}"/.github/workflows/output.sh

@@ -18,141 +18,232 @@ spec:
     singular: builder
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .status.reason
+      name: Reason
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha2
     schema:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
-            description: BuilderSpec defines the desired state of Builder
             properties:
               builder:
-                description: Cloud Native Buildpacks builders
                 type: string
+              builderCredentials:
+                properties:
+                  name:
+                    type: string
+                type: object
+              dockerfile:
+                type: string
+              env:
+                additionalProperties:
+                  type: string
+                type: object
               image:
-                description: Function image name
                 type: string
+              imageCredentials:
+                properties:
+                  name:
+                    type: string
+                type: object
               params:
                 additionalProperties:
                   type: string
-                description: Environment variables to pass to the build process
                 type: object
               port:
-                description: The port on which the function will be invoked
                 format: int32
                 type: integer
-              registry:
-                description: Image registry of the function image
+              shipwright:
                 properties:
-                  account:
-                    description: Image registry account including username and password
+                  strategy:
                     properties:
-                      key:
-                        description: The key of the secret to select from.  Must be
-                          a valid secret key.
+                      kind:
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
                         type: string
-                      optional:
-                        description: Specify whether the Secret or its key must be
-                          defined
-                        type: boolean
                     required:
-                    - key
+                    - name
                     type: object
-                  url:
-                    description: Image registry url
+                  timeout:
+                    format: duration
                     type: string
                 type: object
               srcRepo:
-                description: Git repository info of a function
                 properties:
-                  deleteExisting:
-                    description: 'Clean out the contents of the repo''s destination
-                      directory if it already exists before cloning the repo there
-                      (default: true)'
-                    type: boolean
-                  depth:
-                    description: 'Performs a shallow clone where only the most recent
-                      commit(s) will be fetched (default: 1)'
-                    type: integer
-                  gitInitImage:
-                    description: 'The image used where the git-init binary is (default:
-                      "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.17.3")'
-                    type: string
-                  httpProxy:
-                    description: 'Git HTTP proxy server for non-SSL requests (default:
-                      "")'
-                    type: string
-                  httpsProxy:
-                    description: 'Git HTTPS proxy server for SSL requests (default:
-                      "")'
-                    type: string
-                  noProxy:
-                    description: 'Git no proxy - opt out of proxying HTTP/HTTPS requests
-                      (default: "")'
-                    type: string
-                  refspec:
-                    description: Git refspec to fetch before checking out revision
-                      (default:"")
-                    type: string
+                  credentials:
+                    properties:
+                      name:
+                        type: string
+                    type: object
                   revision:
-                    description: Git revision to checkout (branch, tag, sha, ref…)
-                      (default:"")
                     type: string
                   sourceSubPath:
-                    description: A subpath within the `source` input where the source
-                      to build is located.
                     type: string
-                  sslVerify:
-                    description: 'Defines if http.sslVerify should be set to true
-                      or false in the global git config (default: true)'
-                    type: boolean
-                  subDirectory:
-                    description: 'Subdirectory inside the "output" workspace to clone
-                      the git repo into (default: "")'
-                    type: string
-                  submodules:
-                    description: 'Defines if the resource should initialize and fetch
-                      the submodules (default: true)'
-                    type: boolean
                   url:
-                    description: Git url to clone
                     type: string
-                  verbose:
-                    description: 'Log the commands that are executed during git-clone''s
-                      operation (default: true)'
-                    type: boolean
                 required:
                 - url
                 type: object
-              version:
-                description: Function version in format like v1.0.0
+              state:
+                type: string
+              timeout:
                 type: string
             required:
-            - builder
             - image
-            - registry
             - srcRepo
             type: object
           status:
-            description: BuilderStatus defines the observed state of Builder
             properties:
+              output:
+                properties:
+                  digest:
+                    type: string
+                  size:
+                    format: int64
+                    type: integer
+                type: object
               phase:
                 type: string
+              reason:
+                type: string
+              resourceRef:
+                additionalProperties:
+                  type: string
+                type: object
+              state:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: false
+    subresources:
+      status: {}
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .status.reason
+      name: Reason
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1beta1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              builder:
+                type: string
+              builderCredentials:
+                properties:
+                  name:
+                    type: string
+                type: object
+              dockerfile:
+                type: string
+              env:
+                additionalProperties:
+                  type: string
+                type: object
+              image:
+                type: string
+              imageCredentials:
+                properties:
+                  name:
+                    type: string
+                type: object
+              params:
+                additionalProperties:
+                  type: string
+                type: object
+              port:
+                format: int32
+                type: integer
+              shipwright:
+                properties:
+                  strategy:
+                    properties:
+                      kind:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  timeout:
+                    format: duration
+                    type: string
+                type: object
+              srcRepo:
+                properties:
+                  credentials:
+                    properties:
+                      name:
+                        type: string
+                    type: object
+                  revision:
+                    type: string
+                  sourceSubPath:
+                    type: string
+                  url:
+                    type: string
+                required:
+                - url
+                type: object
+              state:
+                type: string
+              timeout:
+                type: string
+            required:
+            - image
+            - srcRepo
+            type: object
+          status:
+            properties:
+              output:
+                properties:
+                  digest:
+                    type: string
+                  size:
+                    format: int64
+                    type: integer
+                type: object
+              phase:
+                type: string
+              reason:
+                type: string
+              resourceRef:
+                additionalProperties:
+                  type: string
+                type: object
               state:
                 type: string
             type: object
