@@ -32,10 +32,6 @@ func (c *FakeCoreV1beta1) Builders(namespace string) v1beta1.BuilderInterface {
 	return &FakeBuilders{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) Domains(namespace string) v1beta1.DomainInterface {
-	return &FakeDomains{c, namespace}
-}
-
 func (c *FakeCoreV1beta1) Functions(namespace string) v1beta1.FunctionInterface {
 	return &FakeFunctions{c, namespace}
 }
